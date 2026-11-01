@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>ESP32 Pro Controller Web UI</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      touch-action: manipulation;
+      user-select: none;
+    }
+    body {
+      background: #121212;
+      color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      margin: 0;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+    }
+    h1 {
+      font-size: 1.2rem;
+      margin: 8px 0;
+      color: #e60012;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .status-bar {
+      width: 100%;
+      max-width: 420px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      background: #1e1e1e;
+      padding: 8px 16px;
+      border-radius: 20px;
+      border: 1px solid #333;
+    }
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #ff4d4d;
+      display: inline-block;
+      margin-right: 6px;
+    }
+    .status-dot.connected {
+      background: #00e676;
+    }
+    .btn-connect {
+      background: #00e676;
+      color: #000;
+      border: none;
+      padding: 6px 14px;
+      border-radius: 12px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    /* プロコン本体風コントローラー枠 */
+    .controller {
+      width: 100%;
+      max-width: 420px;
+      background: #222;
+      border-radius: 36px;
+      padding: 16px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.6), inset 0 1px 2px rgba(255,255,255,0.1);
+      border: 2px solid #333;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    /* 肩ボタン (L/R/ZL/ZR) */
+    .shoulder-group {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .shoulder-row {
+      display: flex;
+      gap: 6px;
+    }
+    .btn-shoulder {
+      flex: 1;
+      background: #3a3a3c;
+      color: #ddd;
+      border: 1px solid #555;
+      padding: 10px 0;
+      border-radius: 8px;
+      font-weight: bold;
+      font-size: 0.9rem;
+      text-align: center;
+      box-shadow: 0 3px 0 #1a1a1a;
+    }
+    .btn-shoulder:active {
+      transform: translateY(2px);
+      box-shadow: 0 1px 0 #1a1a1a;
+      background: #555;
+    }
+
+    /* システムボタン (+/-/HOME/CAP) */
+    .system-group {
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      background: #181818;
+      padding: 8px;
+      border-radius: 16px;
+    }
+    .btn-sys {
+      background: #444;
+      color: #fff;
+      border: none;
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      font-weight: bold;
+      font-size: 0.8rem;
+      box-shadow: 0 2px 0 #111;
+    }
+    .btn-sys:active {
+      background: #666;
+      transform: translateY(1px);
+    }
+
+    /* メインエリア（十字キー＆ABXY＆スティック） */
+    .main-controls {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      align-items: center;
+    }
+
+    /* 十字キー */
+    .dpad {
+      display: grid;
+      grid-template-columns: repeat(3, 42px);
+      grid-template-rows: repeat(3, 42px);
+      justify-content: center;
+      align-content: center;
+    }
+    .btn-dpad {
+      background: #2c2c2e;
+      color: #fff;
+      border: 1px solid #444;
+      font-weight: bold;
+      font-size: 1.1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 3px 0 #111;
+    }
+    .btn-dpad:active {
+      background: #007aff;
+      box-shadow: none;
+    }
+    .dpad-up { grid-column: 2; grid-row: 1; border-radius: 6px 6px 0 0; }
+    .dpad-left { grid-column: 1; grid-row: 2; border-radius: 6px 0 0 6px; }
+    .dpad-right { grid-column: 3; grid-row: 2; border-radius: 0 6px 6px 0; }
+    .dpad-down { grid-column: 2; grid-row: 3; border-radius: 0 0 6px 6px; }
+
+    /* ABXYボタン */
+    .abxy {
+      display: grid;
+      grid-template-columns: repeat(3, 44px);
+      grid-template-rows: repeat(3, 44px);
+      justify-content: center;
+      align-content: center;
+    }
+    .btn-abxy {
+      background: #333;
+      color: #fff;
+      border: 1px solid #555;
+      border-radius: 50%;
+      font-weight: bold;
+      font-size: 1.1rem;
+      box-shadow: 0 3px 0 #111;
+    }
+    .btn-abxy:active {
+      background: #e60012;
+      box-shadow: none;
+    }
+    .btn-x { grid-column: 2; grid-row: 1; }
+    .btn-y { grid-column: 1; grid-row: 2; }
+    .btn-a { grid-column: 3; grid-row: 2; }
+    .btn-b { grid-column: 2; grid-row: 3; }
+
+    /* スティック押し込み ＆ スペシャル */
+    .sub-group {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .btn-stick {
+      flex: 1;
+      background: #2a2a2a;
+      color: #aaa;
+      border: 1px dashed #555;
+      padding: 8px 0;
+      border-radius: 12px;
+      font-size: 0.8rem;
+    }
+    .btn-stick:active {
+      background: #444;
+      color: #fff;
+    }
+    .btn-special {
+      width: 100%;
+      background: linear-gradient(135deg, #e60012, #ff416c);
+      color: #fff;
+      border: none;
+      padding: 12px 0;
+      border-radius: 12px;
+      font-weight: bold;
+      font-size: 0.95rem;
+      box-shadow: 0 4px 0 #80000a;
+    }
+    .btn-special:active {
+      transform: translateY(2px);
+      box-shadow: 0 1px 0 #80000a;
+    }
+    .btn-sync {
+      background: #ff9500;
+      color: #000;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 10px;
+      font-weight: bold;
+      font-size: 0.85rem;
+    }
+
+    /* ログ表示用 */
+    .log-box {
+      width: 100%;
+      max-width: 420px;
+      height: 80px;
+      background: #000;
+      color: #00ff66;
+      font-family: monospace;
+      font-size: 0.75rem;
+      padding: 8px;
+      border-radius: 8px;
+      margin-top: 12px;
+      overflow-y: auto;
+      border: 1px solid #333;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Pro Controller Web UI</h1>
+
+  <div class="status-bar">
+    <div>
+      <span id="statusDot" class="status-dot"></span>
+      <span id="statusText" style="font-size: 0.85rem;">未接続</span>
+    </div>
+    <button id="connectBtn" class="btn-connect">接続する</button>
+  </div>
+
+  <div class="controller">
+    <!-- L/R/ZL/ZR -->
+    <div class="shoulder-group">
+      <div class="shoulder-row">
+        <button class="btn-shoulder" onclick="send('ZL_ON')">ZL</button>
+        <button class="btn-shoulder" onclick="send('L_ON')">L</button>
+      </div>
+      <div class="shoulder-row">
+        <button class="btn-shoulder" onclick="send('R_ON')">R</button>
+        <button class="btn-shoulder" onclick="send('ZR_ON')">ZR</button>
+      </div>
+    </div>
+
+    <!-- + / - / HOME / CAP -->
+    <div class="system-group">
+      <button class="btn-sys" onclick="send('MINUS_ON')">－</button>
+      <button class="btn-sys" onclick="send('CAP_ON')">📷</button>
+      <button class="btn-sys" onclick="send('HOME_ON')">🏠</button>
+      <button class="btn-sys" onclick="send('PLUS_ON')">＋</button>
+    </div>
+
+    <!-- 十字キー ＆ ABXY -->
+    <div class="main-controls">
+      <div class="dpad">
+        <button class="btn-dpad dpad-up" onclick="send('UP_ON')">▲</button>
+        <button class="btn-dpad dpad-left" onclick="send('LEFT_ON')">◄</button>
+        <button class="btn-dpad dpad-right" onclick="send('RIGHT_ON')">►</button>
+        <button class="btn-dpad dpad-down" onclick="send('DOWN_ON')">▼</button>
+      </div>
+
+      <div class="abxy">
+        <button class="btn-abxy btn-x" onclick="send('X_ON')">X</button>
+        <button class="btn-abxy btn-y" onclick="send('Y_ON')">Y</button>
+        <button class="btn-abxy btn-a" onclick="send('A_ON')">A</button>
+        <button class="btn-abxy btn-b" onclick="send('B_ON')">B</button>
+      </div>
+    </div>
+
+    <!-- L3 / R3 押し込み -->
+    <div class="sub-group">
+      <button class="btn-stick" onclick="send('L3_ON')">L3 (左押し込み)</button>
+      <button class="btn-stick" onclick="send('R3_ON')">R3 (右押し込み)</button>
+    </div>
+
+    <!-- 特殊コンボ & シンクロ -->
+    <button class="btn-special" onclick="send('LR_ON')">💥 L ＋ R 同時押し 💥</button>
+    <div style="text-align: center;">
+      <button class="btn-sync" onclick="send('SYNC')">🔄 SYNC (ペアリング再開)</button>
+    </div>
+  </div>
+
+  <div id="logBox" class="log-box">通信ログがここに表示されます...<br></div>
+
+  <script>
+    // ESP32のMicroPythonコードと一致させるUUID
+    const SERVICE_UUID = "19b10000-e8f2-537e-4f6c-d104768a1214";
+    const CHARACTERISTIC_UUID = "19b10001-e8f2-537e-4f6c-d104768a1214";
+
+    let bleCharacteristic = null;
+
+    const connectBtn = document.getElementById('connectBtn');
+    const statusDot = document.getElementById('statusDot');
+    const statusText = document.getElementById('statusText');
+    const logBox = document.getElementById('logBox');
+
+    function log(msg) {
+      logBox.innerHTML += msg + "<br>";
+      logBox.scrollTop = logBox.scrollHeight;
+    }
+
+    // BLE接続処理
+    connectBtn.addEventListener('click', async () => {
+      try {
+        log("ESP32を検索中...");
+        const device = await navigator.bluetooth.requestDevice({
+          filters: [{ name: 'ESP32-Controller' }],
+          optionalServices: [SERVICE_UUID]
+        });
+
+        log("接続中: " + device.name);
+        const server = await device.gatt.connect();
+        const service = await server.getPrimaryService(SERVICE_UUID);
+        bleCharacteristic = await service.getCharacteristic(CHARACTERISTIC_UUID);
+
+        statusDot.classList.add('connected');
+        statusText.innerText = "ESP32と接続中";
+        connectBtn.style.display = "none";
+        log("🎉 接続成功！ボタンを押して操作してね。");
+
+        device.addEventListener('gattserverdisconnected', () => {
+          statusDot.classList.remove('connected');
+          statusText.innerText = "切断されました";
+          connectBtn.style.display = "inline-block";
+          bleCharacteristic = null;
+          log("🔌 切断されました。");
+        });
+
+      } catch (err) {
+        log("❌ エラー: " + err);
+      }
+    });
+
+    // コマンド送信処理
+    async function send(command) {
+      if (!bleCharacteristic) {
+        log("⚠️ ESP32と接続されていません！");
+        return;
+      }
+      try {
+        const encoder = new TextEncoder();
+        await bleCharacteristic.writeValue(encoder.encode(command));
+        log("送信 -> " + command);
+      } catch (err) {
+        log("❌ 送信失敗: " + err);
+      }
+    }
+  </script>
+</body>
+</html>
