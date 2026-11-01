@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>ESP32 Pro Controller Web UI</title>
+  <title>ESP32 Pro Controller with Joystick</title>
   <style>
     * {
       box-sizing: border-box;
-      touch-action: manipulation;
+      touch-action: none;
       user-select: none;
     }
     body {
@@ -22,8 +22,8 @@
       min-height: 100vh;
     }
     h1 {
-      font-size: 1.2rem;
-      margin: 8px 0;
+      font-size: 1.1rem;
+      margin: 6px 0;
       color: #e60012;
       text-transform: uppercase;
       letter-spacing: 1px;
@@ -34,9 +34,9 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 12px;
+      margin-bottom: 10px;
       background: #1e1e1e;
-      padding: 8px 16px;
+      padding: 6px 14px;
       border-radius: 20px;
       border: 1px solid #333;
     }
@@ -55,9 +55,10 @@
       background: #00e676;
       color: #000;
       border: none;
-      padding: 6px 14px;
+      padding: 5px 12px;
       border-radius: 12px;
       font-weight: bold;
+      font-size: 0.85rem;
       cursor: pointer;
     }
 
@@ -66,20 +67,20 @@
       width: 100%;
       max-width: 420px;
       background: #222;
-      border-radius: 36px;
-      padding: 16px;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.6), inset 0 1px 2px rgba(255,255,255,0.1);
+      border-radius: 32px;
+      padding: 14px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.6);
       border: 2px solid #333;
       display: flex;
       flex-direction: column;
-      gap: 14px;
+      gap: 12px;
     }
 
     /* 肩ボタン (L/R/ZL/ZR) */
     .shoulder-group {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 12px;
+      gap: 10px;
     }
     .shoulder-row {
       display: flex;
@@ -90,10 +91,10 @@
       background: #3a3a3c;
       color: #ddd;
       border: 1px solid #555;
-      padding: 10px 0;
+      padding: 8px 0;
       border-radius: 8px;
       font-weight: bold;
-      font-size: 0.9rem;
+      font-size: 0.85rem;
       text-align: center;
       box-shadow: 0 3px 0 #1a1a1a;
     }
@@ -109,66 +110,83 @@
       justify-content: space-around;
       align-items: center;
       background: #181818;
-      padding: 8px;
-      border-radius: 16px;
+      padding: 6px;
+      border-radius: 14px;
     }
     .btn-sys {
       background: #444;
       color: #fff;
       border: none;
-      width: 38px;
-      height: 38px;
+      width: 34px;
+      height: 34px;
       border-radius: 50%;
       font-weight: bold;
-      font-size: 0.8rem;
+      font-size: 0.75rem;
       box-shadow: 0 2px 0 #111;
     }
     .btn-sys:active {
       background: #666;
-      transform: translateY(1px);
     }
 
-    /* メインエリア（十字キー＆ABXY＆スティック） */
+    /* メインコントロールエリア（左：スティック＆十字 / 右：ABXY） */
     .main-controls {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 16px;
+      gap: 12px;
       align-items: center;
+      justify-items: center;
     }
 
-    /* 十字キー */
-    .dpad {
-      display: grid;
-      grid-template-columns: repeat(3, 42px);
-      grid-template-rows: repeat(3, 42px);
+    /* バーチャルジョイスティック */
+    .joystick-container {
+      width: 120px;
+      height: 120px;
+      background: #181818;
+      border: 2px solid #333;
+      border-radius: 50%;
+      position: relative;
+      touch-action: none;
+      display: flex;
+      align-items: center;
       justify-content: center;
-      align-content: center;
+    }
+    .joystick-knob {
+      width: 50px;
+      height: 50px;
+      background: linear-gradient(135deg, #444, #222);
+      border: 2px solid #666;
+      border-radius: 50%;
+      position: absolute;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+    }
+
+    /* 十字キー小さめ */
+    .dpad-mini {
+      display: grid;
+      grid-template-columns: repeat(3, 30px);
+      grid-template-rows: repeat(3, 30px);
+      margin-top: 8px;
     }
     .btn-dpad {
       background: #2c2c2e;
       color: #fff;
       border: 1px solid #444;
-      font-weight: bold;
-      font-size: 1.1rem;
+      font-size: 0.8rem;
       display: flex;
       align-items: center;
       justify-content: center;
-      box-shadow: 0 3px 0 #111;
     }
-    .btn-dpad:active {
-      background: #007aff;
-      box-shadow: none;
-    }
-    .dpad-up { grid-column: 2; grid-row: 1; border-radius: 6px 6px 0 0; }
-    .dpad-left { grid-column: 1; grid-row: 2; border-radius: 6px 0 0 6px; }
-    .dpad-right { grid-column: 3; grid-row: 2; border-radius: 0 6px 6px 0; }
-    .dpad-down { grid-column: 2; grid-row: 3; border-radius: 0 0 6px 6px; }
+    .btn-dpad:active { background: #007aff; }
+    .dpad-up { grid-column: 2; grid-row: 1; border-radius: 4px 4px 0 0; }
+    .dpad-left { grid-column: 1; grid-row: 2; border-radius: 4px 0 0 4px; }
+    .dpad-right { grid-column: 3; grid-row: 2; border-radius: 0 4px 4px 0; }
+    .dpad-down { grid-column: 2; grid-row: 3; border-radius: 0 0 4px 4px; }
 
     /* ABXYボタン */
     .abxy {
       display: grid;
-      grid-template-columns: repeat(3, 44px);
-      grid-template-rows: repeat(3, 44px);
+      grid-template-columns: repeat(3, 40px);
+      grid-template-rows: repeat(3, 40px);
       justify-content: center;
       align-content: center;
     }
@@ -178,7 +196,7 @@
       border: 1px solid #555;
       border-radius: 50%;
       font-weight: bold;
-      font-size: 1.1rem;
+      font-size: 1rem;
       box-shadow: 0 3px 0 #111;
     }
     .btn-abxy:active {
@@ -190,62 +208,56 @@
     .btn-a { grid-column: 3; grid-row: 2; }
     .btn-b { grid-column: 2; grid-row: 3; }
 
-    /* スティック押し込み ＆ スペシャル */
+    /* 下部サブ */
     .sub-group {
       display: flex;
       justify-content: space-between;
-      gap: 8px;
+      gap: 6px;
     }
     .btn-stick {
       flex: 1;
       background: #2a2a2a;
       color: #aaa;
       border: 1px dashed #555;
-      padding: 8px 0;
-      border-radius: 12px;
-      font-size: 0.8rem;
+      padding: 6px 0;
+      border-radius: 10px;
+      font-size: 0.75rem;
     }
-    .btn-stick:active {
-      background: #444;
-      color: #fff;
-    }
+    .btn-stick:active { background: #444; color: #fff; }
     .btn-special {
       width: 100%;
       background: linear-gradient(135deg, #e60012, #ff416c);
       color: #fff;
       border: none;
-      padding: 12px 0;
-      border-radius: 12px;
+      padding: 10px 0;
+      border-radius: 10px;
       font-weight: bold;
-      font-size: 0.95rem;
-      box-shadow: 0 4px 0 #80000a;
+      font-size: 0.9rem;
+      box-shadow: 0 3px 0 #80000a;
     }
-    .btn-special:active {
-      transform: translateY(2px);
-      box-shadow: 0 1px 0 #80000a;
-    }
+    .btn-special:active { transform: translateY(2px); box-shadow: 0 1px 0 #80000a; }
     .btn-sync {
       background: #ff9500;
       color: #000;
       border: none;
-      padding: 8px 16px;
-      border-radius: 10px;
+      padding: 6px 12px;
+      border-radius: 8px;
       font-weight: bold;
-      font-size: 0.85rem;
+      font-size: 0.8rem;
     }
 
-    /* ログ表示用 */
+    /* ログ表示 */
     .log-box {
       width: 100%;
       max-width: 420px;
-      height: 80px;
+      height: 70px;
       background: #000;
       color: #00ff66;
       font-family: monospace;
-      font-size: 0.75rem;
-      padding: 8px;
-      border-radius: 8px;
-      margin-top: 12px;
+      font-size: 0.7rem;
+      padding: 6px;
+      border-radius: 6px;
+      margin-top: 10px;
       overflow-y: auto;
       border: 1px solid #333;
     }
@@ -253,12 +265,12 @@
 </head>
 <body>
 
-  <h1>Pro Controller Web UI</h1>
+  <h1>Pro Controller + Joystick</h1>
 
   <div class="status-bar">
     <div>
       <span id="statusDot" class="status-dot"></span>
-      <span id="statusText" style="font-size: 0.85rem;">未接続</span>
+      <span id="statusText" style="font-size: 0.8rem;">未接続</span>
     </div>
     <button id="connectBtn" class="btn-connect">接続する</button>
   </div>
@@ -284,13 +296,20 @@
       <button class="btn-sys" onclick="send('PLUS_ON')">＋</button>
     </div>
 
-    <!-- 十字キー ＆ ABXY -->
+    <!-- スティック ＆ ABXY -->
     <div class="main-controls">
-      <div class="dpad">
-        <button class="btn-dpad dpad-up" onclick="send('UP_ON')">▲</button>
-        <button class="btn-dpad dpad-left" onclick="send('LEFT_ON')">◄</button>
-        <button class="btn-dpad dpad-right" onclick="send('RIGHT_ON')">►</button>
-        <button class="btn-dpad dpad-down" onclick="send('DOWN_ON')">▼</button>
+      <div style="display: flex; flex-direction: column; align-items: center;">
+        <!-- ジョイスティック -->
+        <div id="joystick" class="joystick-container">
+          <div id="knob" class="joystick-knob"></div>
+        </div>
+        <!-- 十字キー -->
+        <div class="dpad-mini">
+          <button class="btn-dpad dpad-up" onclick="send('UP_ON')">▲</button>
+          <button class="btn-dpad dpad-left" onclick="send('LEFT_ON')">◄</button>
+          <button class="btn-dpad dpad-right" onclick="send('RIGHT_ON')">►</button>
+          <button class="btn-dpad dpad-down" onclick="send('DOWN_ON')">▼</button>
+        </div>
       </div>
 
       <div class="abxy">
@@ -301,26 +320,24 @@
       </div>
     </div>
 
-    <!-- L3 / R3 押し込み -->
+    <!-- L3 / R3 -->
     <div class="sub-group">
-      <button class="btn-stick" onclick="send('L3_ON')">L3 (左押し込み)</button>
-      <button class="btn-stick" onclick="send('R3_ON')">R3 (右押し込み)</button>
+      <button class="btn-stick" onclick="send('L3_ON')">L3 (左押し)</button>
+      <button class="btn-stick" onclick="send('R3_ON')">R3 (右押し)</button>
     </div>
 
-    <!-- 特殊コンボ & シンクロ -->
+    <!-- スペシャル & シンクロ -->
     <button class="btn-special" onclick="send('LR_ON')">💥 L ＋ R 同時押し 💥</button>
     <div style="text-align: center;">
-      <button class="btn-sync" onclick="send('SYNC')">🔄 SYNC (ペアリング再開)</button>
+      <button class="btn-sync" onclick="send('SYNC')">🔄 SYNC (ペアリング)</button>
     </div>
   </div>
 
-  <div id="logBox" class="log-box">通信ログがここに表示されます...<br></div>
+  <div id="logBox" class="log-box">通信ログ...<br></div>
 
   <script>
-    // ESP32のMicroPythonコードと一致させるUUID
     const SERVICE_UUID = "19b10000-e8f2-537e-4f6c-d104768a1214";
     const CHARACTERISTIC_UUID = "19b10001-e8f2-537e-4f6c-d104768a1214";
-
     let bleCharacteristic = null;
 
     const connectBtn = document.getElementById('connectBtn');
@@ -333,7 +350,6 @@
       logBox.scrollTop = logBox.scrollHeight;
     }
 
-    // BLE接続処理
     connectBtn.addEventListener('click', async () => {
       try {
         log("ESP32を検索中...");
@@ -341,36 +357,29 @@
           filters: [{ name: 'ESP32-Controller' }],
           optionalServices: [SERVICE_UUID]
         });
-
-        log("接続中: " + device.name);
         const server = await device.gatt.connect();
         const service = await server.getPrimaryService(SERVICE_UUID);
         bleCharacteristic = await service.getCharacteristic(CHARACTERISTIC_UUID);
 
         statusDot.classList.add('connected');
-        statusText.innerText = "ESP32と接続中";
+        statusText.innerText = "接続中";
         connectBtn.style.display = "none";
-        log("🎉 接続成功！ボタンを押して操作してね。");
+        log("🎉 接続成功！");
 
         device.addEventListener('gattserverdisconnected', () => {
           statusDot.classList.remove('connected');
-          statusText.innerText = "切断されました";
+          statusText.innerText = "切断";
           connectBtn.style.display = "inline-block";
           bleCharacteristic = null;
-          log("🔌 切断されました。");
+          log("🔌 切断されました");
         });
-
       } catch (err) {
         log("❌ エラー: " + err);
       }
     });
 
-    // コマンド送信処理
     async function send(command) {
-      if (!bleCharacteristic) {
-        log("⚠️ ESP32と接続されていません！");
-        return;
-      }
+      if (!bleCharacteristic) return;
       try {
         const encoder = new TextEncoder();
         await bleCharacteristic.writeValue(encoder.encode(command));
@@ -379,6 +388,62 @@
         log("❌ 送信失敗: " + err);
       }
     }
+
+    // バーチャルジョイスティックのタッチ操作処理
+    const joystick = document.getElementById('joystick');
+    const knob = document.getElementById('knob');
+    let maxDist = 35; // スティックの動く最大半径
+
+    function updateJoystick(clientX, clientY) {
+      const rect = joystick.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+      
+      let dx = clientX - centerX;
+      let dy = clientY - centerY;
+      let dist = Math.sqrt(dx * dx + dy * dy);
+
+      if (dist > maxDist) {
+        dx = (dx / dist) * maxDist;
+        dy = (dy / dist) * maxDist;
+      }
+
+      knob.style.transform = `translate(${dx}px, ${dy}px)`;
+
+      // 傾き具合を方向コマンドに変換して送信（例として上下左右）
+      if (Math.abs(dx) > Math.abs(dy)) {
+        if (dx > 15) send('STICK_R');
+        else if (dx < -15) send('STICK_L');
+      } else {
+        if (dy > 15) send('STICK_D');
+        else if (dy < -15) send('STICK_U');
+      }
+    }
+
+    joystick.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      const touch = e.touches[0];
+      updateJoystick(touch.clientX, touch.clientY);
+    }, { passive: false });
+
+    joystick.addEventListener('touchend', () => {
+      knob.style.transform = `translate(0px, 0px)`;
+      send('STICK_CENTER');
+    });
+
+    // マウス操作対応（PCでのデバッグ用）
+    let isDragging = false;
+    joystick.addEventListener('mousedown', () => isDragging = true);
+    window.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      updateJoystick(e.clientX, e.clientY);
+    });
+    window.addEventListener('mouseup', () => {
+      if (!isDragging) return;
+      isDragging = false;
+      knob.style.transform = `translate(0px, 0px)`;
+      send('STICK_CENTER');
+    });
   </script>
 </body>
 </html>
